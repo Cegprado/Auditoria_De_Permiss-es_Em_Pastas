@@ -1,0 +1,257 @@
+<#
+SCRIPT DE AUDITORIA DE PERMISSÕES DE ARQUIVOS
+Autor: [Carlos Eduardo Guimaraes Prado]
+Versão: 1.0
+Descrição: Este script permite auditorar e gerenciar permissões de arquivos/pastas em sistemas Windows.
+#>
+
+# Função para registrar mensagens em um arquivo de log
+function Log-Mensagem {
+    param (
+        [string]$mensagem,  # Mensagem a ser registrada
+        [string]$cor = "White"  # Cor do texto no console (opcional)
+    )
+    $caminhoLog = "C:\Logs\AuditoriaPermissoes.log"  # Caminho do arquivo de log
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"  # Carimbo de data/hora
+    
+    # Exibe a mensagem colorida no console e registra no arquivo de log
+    Write-Host "[$timestamp] $mensagem" -ForegroundColor $cor
+    Add-Content -Path $caminhoLog -Value "[$timestamp] $mensagem"
+}
+
+# Função para exibir o menu principal
+function Mostrar-Menu {
+    Clear-Host  # Limpa o console
+    # Cabeçalho do menu
+    Write-Host "==============================================" -ForegroundColor Cyan
+    Write-Host "       AUDITORIA DE PERMISSÕES DE ARQUIVOS     " -ForegroundColor Yellow
+    Write-Host "==============================================" -ForegroundColor Cyan
+    
+    # Opções do menu
+    Write-Host "1. Listar permissões de uma pasta" -ForegroundColor Green
+    Write-Host "2. Identificar permissões inseguras (Everyone/Full Control)" -ForegroundColor Green
+    Write-Host "3. Gerar relatório em CSV" -ForegroundColor Green
+    Write-Host "4. Corrigir permissões herdadas quebradas" -ForegroundColor Green
+    Write-Host "5. Sair" -ForegroundColor Red
+    
+    Write-Host "==============================================" -ForegroundColor Cyan
+}
+
+# Função 1: Listar permissões de uma pasta de forma formatada
+function Get-PermissoesPasta {
+    param ([string]$caminhoPasta)  # Caminho da pasta a ser auditada
+    
+    try {
+        $acl = Get-Acl -Path $caminhoPasta  # Obtém a lista de controle de acesso
+        
+        # Configuração de cores para a saída
+        $corTitulo = "Cyan"
+        $corDestaque = "Yellow"
+        $corPermissao = "Green"
+        $corHerdado = "DarkGray"
+
+        # Cabeçalho da seção de permissões
+        Write-Host "`n"
+        Write-Host ("=" * 60) -ForegroundColor $corTitulo
+        Write-Host "PERMISSÕES DA PASTA: $caminhoPasta" -ForegroundColor $corTitulo
+        Write-Host ("=" * 60) -ForegroundColor $corTitulo
+        Write-Host "`n"
+
+        # Função interna para traduzir direitos técnicos para termos amigáveis
+        function Traduzir-Permissao($rights) {
+            switch -Wildcard ($rights.ToString()) {
+                "FullControl"   { "Controle total" }
+                "Modify"        { "Editar/Renomear/Apagar" }
+                "ReadAndExecute" { "Ler e Executar" }
+                "Write"         { "Criar e Modificar" }
+                "AppendData"     { "Adicionar dados" }
+                "CreateFiles"    { "Criar arquivos" }
+                "268435456"      { "Controle para dono do arquivo" }  # Permissão especial do CREATOR OWNER
+                default          { $rights }  # Mantém a descrição original se não houver tradução
+            }
+        }
+
+        # Processa e exibe as permissões agrupadas por usuário/grupo
+        $acl.Access | Group-Object IdentityReference | ForEach-Object {
+            $grupo = $_.Name
+            $permissoes = $_.Group | ForEach-Object {
+                # Traduz e formata cada permissão
+                $traducao = Traduzir-Permissao $_.FileSystemRights
+                $tipoAcesso = if ($_.AccessControlType -eq "Allow") { " Permitido" } else { " Negado" }
+                $heranca = if ($_.IsInherited) { "(Herdado)" } else { "(Definido aqui)" }
+                
+                # Formata a linha de exibição
+                "  → $traducao".PadRight(35) + " | $tipoAcesso $heranca"
+            }
+
+            # Exibe o grupo e suas permissões
+            Write-Host " $grupo" -ForegroundColor $corDestaque
+            Write-Host ("─" * 60) -ForegroundColor $corHerdado
+            $permissoes | ForEach-Object { Write-Host $_ -ForegroundColor $corPermissao }
+            Write-Host "`n"
+        }
+
+        Log-Mensagem "Permissões listadas para: $caminhoPasta" -cor "Green"
+
+    } catch {
+        Log-Mensagem "Erro ao listar permissões: $_" -cor "Red"
+        Write-Host "Caminho inválido ou sem acesso!" -ForegroundColor Red
+    }
+}
+
+# Função 2: Identificar permissões potencialmente inseguras
+function Find-PermissoesInseguras {
+    param ([string]$caminhoPasta)  # Caminho da pasta a ser auditada
+    
+    try {
+        $arquivos = Get-ChildItem -Path $caminhoPasta -Recurse -File  # Lista todos os arquivos
+        $resultados = @()  # Armazena os resultados encontrados
+
+        foreach ($arquivo in $arquivos) {
+            $acl = Get-Acl -Path $arquivo.FullName  # Obtém as permissões do arquivo
+            
+            foreach ($regra in $acl.Access) {
+                $direitos = [System.Security.AccessControl.FileSystemRights]$regra.FileSystemRights
+                
+                # Verifica se a regra é considerada insegura
+                if ($regra.IdentityReference -like "*Everyone*" -or $direitos -match "FullControl") {
+                    $resultados += [PSCustomObject]@{
+                        Caminho = $arquivo.FullName
+                        Permissao = "Controle Total"
+                        Identidade = $regra.IdentityReference
+                    }
+                }
+            }
+        }
+
+        if ($resultados.Count -gt 0) {
+            # Exibe os resultados formatados
+            Write-Host "`n============================================================"
+            Write-Host "|          PERMISSÕES INSEGURAS IDENTIFICADAS              |"
+            Write-Host "============================================================"
+            Write-Host " Pasta Analisada: $caminhoPasta`n"
+            
+            # Tabela de itens críticos
+            Write-Host " Itens com Risco:"
+            Write-Host "┌──────────────────────────────────────────────────────────┐"
+            Write-Host "| Caminho do Arquivo       | Permissão         | Identidade |"
+            Write-Host "├──────────────────────────────────────────────────────────┤"
+            $resultados | ForEach-Object {
+                Write-Host ("| {0} | {1} | {2} |" -f 
+                    ($_.Caminho.ToString().PadRight(22)),
+                    ($_.Permissao.ToString().PadRight(17)),
+                    ($_.Identidade.ToString().PadRight(10)))
+            }
+            Write-Host "└──────────────────────────────────────────────────────────┘`n"
+
+            # Lista outras entidades com acesso
+            Write-Host " Outras Entidades com Acesso Elevado:"
+            $acl = Get-Acl -Path $caminhoPasta
+            $acl.Access | Where-Object { 
+                $_.IdentityReference -notlike "*Everyone*" -and 
+                $_.FileSystemRights -notmatch "FullControl" 
+            } | Select-Object -ExpandProperty IdentityReference -Unique | ForEach-Object {
+                Write-Host "- $_"
+            }
+
+            # Legenda explicativa
+            Write-Host "`n  Atenção:"
+            Write-Host "- Controle Total permite editar, excluir ou controlar totalmente o arquivo."
+            Write-Host "- Everyone dá acesso a qualquer usuário/anônimo (risco crítico!)."
+
+            Log-Mensagem "Permissões inseguras encontradas em: $caminhoPasta" -cor "Yellow"
+        } else {
+            Write-Host "Nenhuma permissão insegura encontrada!" -ForegroundColor Green
+        }
+    } catch {
+        Log-Mensagem "Erro na auditoria: $_" -cor "Red"
+    }
+}
+
+# Função 3: Gerar relatório detalhado em formato CSV
+function Exportar-RelatorioCSV {
+    param (
+        [string]$caminhoPasta,  # Caminho da pasta a ser auditada
+        [string]$caminhoCSV     # Caminho do arquivo CSV de saída
+    )
+    
+    try {
+        # Coleta dados de todas as permissões
+        $aclData = Get-ChildItem -Path $caminhoPasta -Recurse | ForEach-Object {
+            $acl = Get-Acl -Path $_.FullName
+            foreach ($regra in $acl.Access) {
+                [PSCustomObject]@{
+                    Caminho = $_.FullName
+                    Permissao = [System.Security.AccessControl.FileSystemRights]$regra.FileSystemRights
+                    Identidade = $regra.IdentityReference
+                    Herdado = $regra.IsInherited
+                }
+            }
+        }
+        
+        # Exporta para CSV
+        $aclData | Export-Csv -Path $caminhoCSV -NoTypeInformation -Encoding UTF8
+        Write-Host "Relatório gerado em: $caminhoCSV" -ForegroundColor Green
+        Log-Mensagem "Relatório CSV gerado: $caminhoCSV" -cor "Green"
+    } catch {
+        Log-Mensagem "Erro ao gerar relatório: $_" -cor "Red"
+    }
+}
+
+# Função 4: Restaurar herança de permissões
+function Repair-HerancaPermissoes {
+    param ([string]$caminhoPasta)  # Caminho da pasta a ser corrigida
+    
+    try {
+        $acl = Get-Acl -Path $caminhoPasta
+        
+        # Verifica se a herança está bloqueada
+        if ($acl.AreAccessRulesProtected) {
+            # Reativa a herança e mantém regras existentes
+            $acl.SetAccessRuleProtection($false, $true)
+            Set-Acl -Path $caminhoPasta -AclObject $acl
+            Write-Host "Herança de permissões restaurada com sucesso!" -ForegroundColor Green
+            Log-Mensagem "Herança corrigida em: $caminhoPasta" -cor "Green"
+        } else {
+            Write-Host "As permissões já estão herdadas corretamente!" -ForegroundColor Yellow
+        }
+    } catch {
+        Log-Mensagem "Erro ao corrigir herança: $_" -cor "Red"
+    }
+}
+
+# Loop principal do programa
+while ($true) {
+    Mostrar-Menu  # Exibe o menu
+    $opcao = Read-Host "`nEscolha uma opção (1-5)"  # Captura a escolha do usuário
+
+    # Processa a opção selecionada
+    switch ($opcao) {
+        "1" {
+            $pasta = Read-Host "Digite o caminho da pasta"
+            Get-PermissoesPasta -caminhoPasta $pasta
+            Read-Host "`nPressione Enter para continuar..."
+        }
+        "2" {
+            $pasta = Read-Host "Digite o caminho da pasta"
+            Find-PermissoesInseguras -caminhoPasta $pasta
+            Read-Host "`nPressione Enter para continuar..."
+        }
+        "3" {
+            $pasta = Read-Host "Digite o caminho da pasta"
+            $csv = Read-Host "Digite o caminho do arquivo CSV (ex: C:\Relatorio.csv)"
+            Exportar-RelatorioCSV -caminhoPasta $pasta -caminhoCSV $csv
+            Read-Host "`nPressione Enter para continuar..."
+        }
+        "4" {
+            $pasta = Read-Host "Digite o caminho da pasta"
+            Repair-HerancaPermissoes -caminhoPasta $pasta
+            Read-Host "`nPressione Enter para continuar..."
+        }
+        "5" { exit }  # Encerra o script
+        default {
+            Write-Host "Opção inválida!" -ForegroundColor Red
+            Start-Sleep -Seconds 2
+        }
+    }
+}
