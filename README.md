@@ -1,6 +1,4 @@
-Aqui está um **README** para o seu script de auditoria de permissões em PowerShell:
 
----
 
 # 📁 Script de Auditoria de Permissões de Arquivos
 
