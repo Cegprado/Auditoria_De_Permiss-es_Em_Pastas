@@ -1,0 +1,1 @@
+# Auditoria-de-Permiss-es-em-PowerShell-
