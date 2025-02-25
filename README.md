@@ -1,94 +1,78 @@
+# 🚀 Automatize a Auditoria de Permissões de Arquivos com PowerShell!
 
+Você já se deparou com a necessidade de auditar permissões de arquivos e pastas em um ambiente Windows? Saber quem tem acesso a quê e identificar permissões inseguras pode ser um desafio, especialmente em ambientes com muitos usuários e pastas compartilhadas.
 
-# 📁 Script de Auditoria de Permissões de Arquivos
-
-### Autor: **Carlos Eduardo Guimarães Prado**  
-### Versão: **1.0**
-
----
-
-## 📋 Descrição
-
-Este script em **PowerShell** foi desenvolvido para **auditar**, **gerenciar** e **corrigir permissões** de arquivos e pastas em sistemas **Windows**. Ele fornece funcionalidades essenciais para administradores de sistemas garantirem que os diretórios estejam devidamente protegidos, minimizando riscos de acessos não autorizados.
+Pensando nisso, desenvolvi um script em PowerShell que simplifica esse processo! 🚀
 
 ---
 
-## 🚀 Funcionalidades
-
-1. **📂 Listar Permissões de uma Pasta**  
-   Exibe todas as permissões configuradas em uma pasta de forma clara e detalhada.
-
-2. **⚠️ Identificar Permissões Inseguras**  
-   Detecta pastas e arquivos com permissões amplas, como **"Everyone"** com **"Full Control"**, destacando potenciais riscos.
-
-3. **📊 Gerar Relatório em CSV**  
-   Cria um relatório detalhado em formato **CSV** contendo informações sobre permissões, herança e usuários.
-
-4. **🔄 Corrigir Herança Quebrada**  
-   Restaura as permissões herdadas em pastas onde a herança foi desativada indevidamente.
-
-5. **🚪 Sair**  
-   Finaliza a execução do script.
+## 📌 O que esse script faz?
+✅ **Lista permissões de pastas** de forma organizada e legível.  
+✅ **Identifica permissões inseguras**, como "Everyone/Full Control".  
+✅ **Gera relatórios em CSV** para análise e documentação.  
+✅ **Corrige herança de permissões quebradas**, garantindo a segurança do ambiente.  
+✅ **Registra logs detalhados** para auditoria e acompanhamento.  
 
 ---
 
-## ⚙️ Requisitos
-
-- **Sistema Operacional**: Windows 10/11, Windows Server 2016 ou superior  
-- **Permissões**: Execução como **Administrador**  
-- **PowerShell**: Versão 5.1 ou superior  
-- **Caminho para Logs**: Certifique-se de que o diretório `C:\Logs` existe para armazenar os logs gerados.
+## 🎯 Por que usar?
+- **Eficiência**: Automatiza tarefas manuais e repetitivas.  
+- **Segurança**: Identifica e corrige vulnerabilidades rapidamente.  
+- **Transparência**: Gera relatórios claros para compartilhamento com a equipe ou superiores.  
 
 ---
 
-## 🛠️ Como Usar
+## 🛠️ Como funciona?
+O script é modular e fácil de usar, com um menu interativo que guia o usuário pelas funcionalidades. Além disso, ele foi desenvolvido com boas práticas, como validação de entradas, tratamento de erros e suporte a logs detalhados.
 
-1. **Execute o PowerShell como Administrador.**  
-2. **Execute o script:**  
+### 📖 Manual / Help: Configuração Inicial
+
+Antes de executar o script, é importante definir algumas variáveis essenciais para garantir o correto funcionamento:
+
+### 🔹 Configuração das principais variáveis:
+
+1️⃣ **OU Padrão de Usuários:** Define a unidade organizacional onde os usuários serão cadastrados. Exemplo:
+   ```powershell
+   $OUUsuarios = "OU=Usuarios,DC=empresa,DC=com"
+   ```
+
+2️⃣ **OU Padrão de Computadores:** Define a unidade organizacional onde os computadores serão cadastrados. Exemplo:
+   ```powershell
+   $OUComputadores = "OU=Computadores,DC=empresa,DC=com"
+   ```
+
+3️⃣ **Domínio:** Define o domínio padrão da empresa. Exemplo:
+   ```powershell
+   $Dominio = "empresa.com"
+   ```
+
+### 🏁 Como executar o script?
+1. Abra o PowerShell como Administrador.
+2. Navegue até o diretório onde o script está salvo.
+   ```powershell
+   cd C:\Scripts
+   ```
+3. Execute o script:
    ```powershell
    .\AuditoriaPermissoes.ps1
    ```
-
-3. **Siga o menu interativo:**  
-   - **Escolha a opção desejada (1-5)**.  
-   - **Informe os caminhos de pastas/arquivos** quando solicitado.
-
-4. **Logs:**  
-   - Todas as ações são registradas no arquivo:  
-     ```plaintext
-     C:\Logs\AuditoriaPermissoes.log
-     ```
+4. Siga as instruções interativas no terminal.
 
 ---
 
-## 📝 Exemplo de Uso
-
-**Listar permissões de uma pasta:**  
-```powershell
-1. Listar permissões de uma pasta  
-Digite o caminho da pasta: C:\Projetos  
-```
-
-**Gerar um relatório em CSV:**  
-```powershell
-3. Gerar relatório em CSV  
-Digite o caminho da pasta: C:\Projetos  
-Digite o caminho do arquivo CSV: C:\Relatorio_Permissoes.csv  
-```
+## 🔗 Confira o código completo no GitHub:
+[Link do Repositório](https://github.com/Cegprado/Auditoria_De_Permiss-es_Em_Pastas/blob/main/Auditoria%20de%20permiss%C3%B5es%20em%20pastas.txt)
 
 ---
 
-## ⚡ Melhorias Futuras
+## 📢 Quem pode usar?
+- Administradores de sistemas Windows.  
+- Profissionais de segurança da informação.  
+- Qualquer pessoa que precise gerenciar permissões de arquivos de forma eficiente.  
 
-- Integração com Active Directory para auditorias de usuários específicos.  
-- Relatórios em formato PDF com visual mais amigável.  
-- Interface gráfica básica usando PowerShell GUI.  
+Se você gosta de soluções que unem **automação**, **segurança** e **eficiência**, este script é para você! 💻🔒
 
----
+👉 **Dúvidas ou sugestões? Comente abaixo ou entre em contato! Vamos trocar ideias e melhorar ainda mais essa solução.**
 
-## 📄 Licença
+#PowerShell #Automação #SegurançaDaInformação #Windows #DevOps #TI #Scripting #GitHub
 
-Este projeto está sob a licença **MIT**.  
-Sinta-se à vontade para modificar, distribuir ou usar conforme necessário.
-
----
